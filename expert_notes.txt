@@ -1,0 +1,16 @@
+Z - redshifts
+m_B magnitudes
+
+Use the above two to get an estimate of how distant the supernovae is
+They are all type 1A supernovae (they all occur at the same luminosity)
+So we know how bright they should be and how bright they appear and we can use that to get an estimate of the distance
+
+We want to convert from Z to some kind of distance. We'll make a redshift versus distance plot which is the diagonal line plot in the paper
+
+This conversion will depend on cosmological parameters such as the speed of the expansion of the universe
+
+If the universe is expanding very quickly, we'll see the light stretched out, which means there was less time between when it was emitted and when we saw it
+
+Quick expansion means for a given redshift we expect a shorter distance
+
+We need a model that takes in the data to get the relationship between redshift and distance
