@@ -28,9 +28,23 @@ class CosmoModel:
         """
         self._Omega_m = Omega_m
         self._Omega_L = Omega_L
-        # _Omega_r = 0
         self._H0 = H0
         self._Omega_k = 1 - Omega_m - Omega_L
+
+    def comoving(self, z: float) -> float:
+        """
+        Returns the comoving distance to a given redshift for the cosmological model.
+        This is used in calculations of the luminosity distance.
+
+        Inputs:
+        z - redshift
+        """
+
+        def integrand(redshift):
+            return 1. / np.sqrt(
+                self._Omega_m * (1 + redshift) ** 3 + self._Omega_k * (1 + redshift) ** 2 + self._Omega_L)
+
+        return scipy.integrate.quad(integrand, 0, z)[0]
 
     def dL(self, z: float) -> float:
         """
@@ -44,28 +58,15 @@ class CosmoModel:
         to_hz = 3.241e-20  # conversion from km/s/Mpc to 1/s
         lum_distance = c / (self._H0 * to_hz) * (1 + z)  # prefactor in units of Mpc
         if self._Omega_k < 0:
-            lum_distance *= (1. / np.sqrt(np.abs(self._Omega_k))) * np.sinh(
-                np.sqrt(np.abs(self._Omega_k)) * self.comoving(z))
+            lum_distance *= (1. / np.sqrt(np.abs(self._Omega_k))) \
+                            * np.sinh(np.sqrt(np.abs(self._Omega_k)) * self.comoving(z))
         elif self._Omega_k == 0:
             lum_distance *= self.comoving(z)
         elif self._Omega_k > 0:
-            lum_distance *= (1. / np.sqrt(np.abs(self._Omega_k))) * np.sin(np.sqrt(np.abs(self._Omega_k)) * self.comoving(z))
+            lum_distance *= (1. / np.sqrt(np.abs(self._Omega_k))) \
+                            * np.sin(np.sqrt(np.abs(self._Omega_k)) * self.comoving(z))
 
         return lum_distance
-
-    def comoving(self, z: float) -> float:
-        """
-        Returns the comoving distance to a given redshift for the cosmological model.
-        This is used in calculations of the luminosity distance.
-        
-        Inputs:
-        z - redshift
-        """
-
-        def integrand(redshift):
-            return 1. / np.sqrt(self._Omega_m*(1 + redshift)**3 + self._Omega_k*(1 + redshift)**2 + self._Omega_L)
-
-        return scipy.integrate.quad(integrand, 0, z)[0]
 
     def distmod(self, z: float) -> float:
         """
