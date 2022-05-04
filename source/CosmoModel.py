@@ -1,3 +1,5 @@
+from typing import Union
+
 import numpy as np
 import scipy.integrate
 
@@ -31,7 +33,7 @@ class CosmoModel:
         self._H0 = H0
         self._Omega_k = 1 - Omega_m - Omega_L
 
-    def comoving(self, z: float) -> float:
+    def comoving(self, z: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         """
         Returns the comoving distance to a given redshift for the cosmological model.
         This is used in calculations of the luminosity distance.
@@ -41,8 +43,17 @@ class CosmoModel:
         """
 
         def integrand(redshift):
-            return 1. / np.sqrt(
-                self._Omega_m * (1 + redshift) ** 3 + self._Omega_k * (1 + redshift) ** 2 + self._Omega_L)
+            try:
+                to_sqrt = self._Omega_m * (1 + redshift) ** 3 + self._Omega_k * (1 + redshift) ** 2 + self._Omega_L
+                if to_sqrt < 0:
+                    raise RuntimeWarning
+                value = np.sqrt(self._Omega_m * (1 + redshift) ** 3 + self._Omega_k * (1 + redshift) ** 2 + self._Omega_L)
+            except RuntimeWarning as e:
+                # print(f"Negative value in square root: {self._Omega_m=}, {self._Omega_L=}, {self._Omega_k=}, {redshift=}")
+                value = np.sqrt(self._Omega_m * (1 + redshift) ** 3 + self._Omega_k * (1 + redshift) ** 2 + self._Omega_L)
+                # print(value)
+            value = 1. / value
+            return value
 
         return scipy.integrate.quad(integrand, 0, z)[0]
 
@@ -68,11 +79,22 @@ class CosmoModel:
 
         return lum_distance
 
-    def distmod(self, z: float) -> float:
+    def distmod(self, z: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         """
         Returns the distance modulus for a given redshift.
-        
+        Performs operation on either a single float or an entire numpy array.
+
         Inputs:
         z - redshift
         """
-        return 5 * np.log10(self.dL(z) / 1e-5)
+        if type(z) == float:
+            return 5 * np.log10(self.dL(z) / 1e-5)
+
+        elif type(z) == np.ndarray:
+            results = np.zeros(len(z))
+            for i, j in enumerate(z):
+                results[i] = 5 * np.log10(self.dL(j) / 1e-5)
+            return results
+
+        else:
+            raise TypeError("Argument of invalid type passed for z in distmod()")
