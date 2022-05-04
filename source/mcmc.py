@@ -1,7 +1,10 @@
+import itertools
 import os
 
 import numpy as np
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union, List, Dict
+
+from matplotlib import pyplot as plt
 
 from CosmoModel import CosmoModel
 
@@ -11,7 +14,7 @@ class MCMC:
                  initial_state: Tuple[float, float, float],
                  data_file: str,
                  systematics_file: Optional[str],
-                 g_sigma=(0.5, 0.5, 0.5)) -> None:
+                 g_sigma=(0.5, 0.5, 10)) -> None:
 
         self._chain = np.array([initial_state])
         self._initial_state = initial_state  # (Omega_m, Omega_L, H0)
@@ -45,18 +48,48 @@ class MCMC:
         return cov
 
     # computes log_likelihood up to a constant (i.e. unnormalized)
-    def log_likelihood(self, params: Tuple[float, float, float]) -> np.ndarray:
+    def log_likelihood(self, params: Tuple[float, float, float]) -> float:
         """
         Takes in a vector of the parameters Omega_m, Omega_L, and H0, then creates a cosmological model
         off them and calculates the difference between
-        :param params:
-        :return:
+        :param params: Tuple of (Omega_m, Omega_, H0)
+        :return: Numpy array of likelihood
         """
         # params[0] = Omega_m, params[1] = Omega_L, params[2] = H0 [km/s/Mpc]
         cosmo = CosmoModel(params[0], params[1], params[2])
         mu_vector = cosmo.distmod(self._zcmb) - self._mb  # difference of model_prediction - our_data
-        chi2 = np.einsum("i,ij,j", mu_vector.T, self._fisher, mu_vector)
+        # IDE thinks einsum can only return an array, but this returns a float, so next line ignores the warning
+        # noinspection PyTypeChecker
+        chi2: float = np.einsum("i,ij,j", mu_vector.T, self._fisher, mu_vector)
         return -chi2 / 2.
+
+    def generate_likelihood_arrays(self) -> (np.ndarray, Dict[tuple: float]):
+        """
+        Iterates over possible values for the model parameters and creates a likelihood distribution
+        using the log_likelihood() function
+        :return: A dictionary assigning values in parameter space to likelihood values
+        """
+        # Create three arrays to contain possible values the parameters
+        Omega_m: np.ndarray = np.linspace(0.05, 2, 40)
+        Omega_L: np.ndarray = np.linspace(0.05, 2, 40)
+        H0: np.ndarray = np.linspace(1, 200, 399)
+
+        # Total number of points in parameter space
+        total_parameter_num = len(Omega_m)*len(Omega_m)*len(H0)
+
+        # A list of values in parameter space paired to likelihoods
+        params_to_likelihood: np.ndarray = np.zeros(total_parameter_num)
+        likelihood_lookup: Dict[Tuple[float, float, float]: float] = {}
+
+        for i, params in enumerate(itertools.product(Omega_m, Omega_L, H0)):
+            # Equivalent to a nested for loop over the three lists
+            # i = an index that counts up from 0 over each loop
+            # params = a tuple (Omega_m, Omega_L, H0)
+            likelihood = self.log_likelihood(params)
+            params_to_likelihood[i] = (params, likelihood)
+            likelihood_lookup[params] = likelihood
+
+        return params_to_likelihood, likelihood_lookup
 
     @staticmethod
     def evaluate_gaussian(pos: float,
@@ -71,53 +104,44 @@ class MCMC:
         """
         return 1 / (np.sqrt(2 * np.pi) * scale) * np.exp(-(pos - loc) ** 2 / (2 * scale ** 2))
 
-    def generator(self, position_in) -> float:
+    def generator(self, position_in: Tuple[float, float, float]) -> Tuple[float, float, float]:
         """
         Generates a new candidate position for the chain
-        :param position_in: Starting position
+        :param position_in: Starting position tuple with (
         :return: Candidate next position
         """
-        candidate = np.random.normal(
-            # a gaussian centered around current pos.
-            loc=position_in,
-            # scale is how far the random points will roam
-            scale=self._generating_sigma)
-        return round(candidate, 2)
+        candidate: List[float] = [0., 0., 0.]
+        for i in range(3):
+            candidate[i]: float = np.random.normal(
+                loc=position_in[i],  # sample from gaussian centered around current pos.
+                scale=self._generating_sigma[i])  # std. dev of distribution
+            candidate[i] = round(candidate[i], 2)
+        return candidate[0], candidate[1], candidate[2]
 
     def generate_acceptance_prob(self,
-                                 last_pos: float,
-                                 candidate_pos: float) -> float:
+                                 last_pos: Tuple[float, float, float],
+                                 candidate_pos: Tuple[float, float, float],
+                                 likelihood_lookup: Dict[Tuple[float, float, float]: float]) -> float:
         """
         Generates acceptance probability according to Metropolis-Hastings Algorithm
         :param last_pos: Starting position
         :param candidate_pos: Potential new position
         :return: A probability for accepting the new position
         """
-        # Starting position x_t
-        # last_pos = self.chain[-1]
-
-        # Posterior probability of that position P(x_t)
-        try:
-            last_pos_prob = self.position_to_likelihood[last_pos]
-        except KeyError:
-            print(len(self.chain), last_pos)
-            print(self.chain)
-            raise
-
-        # New position x'
-        # candidate_pos = self.generator(last_pos)
+        # Posterior probability of last position P(x_t)
+        last_pos_prob = likelihood_lookup[last_pos]
 
         # Posterior probability of new position P(x')
-        if candidate_pos in self.position_to_likelihood:
-            candidate_pos_prob = self.position_to_likelihood[candidate_pos]
+        if candidate_pos in likelihood_lookup:
+            candidate_pos_prob = likelihood_lookup[candidate_pos]
         else:
             candidate_pos_prob = 0.
 
         # The probabilities to move back and forth from the new and old positions
         # g(x'|x_t)
-        move_to_candidate_prob = self.evaluate_gaussian(candidate_pos, last_pos, self.generator_width)
+        move_to_candidate_prob = self.evaluate_gaussian(candidate_pos, last_pos, self._generating_sigma)
         # g(x_t|x')
-        move_to_last_pos_prob = self.evaluate_gaussian(last_pos, candidate_pos, self.generator_width)
+        move_to_last_pos_prob = self.evaluate_gaussian(last_pos, candidate_pos, self._generating_sigma)
 
         acceptance_prob: float = min(1.,
                                      candidate_pos_prob * move_to_last_pos_prob / last_pos_prob / move_to_candidate_prob)
@@ -159,7 +183,7 @@ if __name__ == "__main__":
     binned_data_file = os.path.join(datadir, 'lcparam_DS17f.txt')
     binned_sys_file = os.path.join(datadir, 'sys_DS17f.txt')
 
-    for i in range(5):
+    for _ in range(5):
         start = (round(np.random.uniform(0.01, 2), 2),  # Omega_m
                  round(np.random.uniform(0.01, 2), 2),  # Omega_L
                  round(np.random.uniform(1, 200), 2))  # H0

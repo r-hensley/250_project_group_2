@@ -78,4 +78,14 @@ class CosmoModel:
         Inputs:
         z - redshift
         """
-        return 5 * np.log10(self.dL(z) / 1e-5)
+        if type(z) == float:
+            return 5 * np.log10(self.dL(z) / 1e-5)
+
+        elif type(z) == np.ndarray:
+            results = np.zeros(len(z))
+            for i, j in enumerate(z):
+                results[i] = 5 * np.log10(self.dL(j) / 1e-5)
+            return results
+
+        else:
+            raise TypeError("Argument of invalid type passed for z in distmod()")
