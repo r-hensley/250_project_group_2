@@ -1,3 +1,5 @@
+from typing import Union
+
 import numpy as np
 import scipy.integrate
 
@@ -31,7 +33,7 @@ class CosmoModel:
         self._H0 = H0
         self._Omega_k = 1 - Omega_m - Omega_L
 
-    def comoving(self, z: float) -> float:
+    def comoving(self, z: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         """
         Returns the comoving distance to a given redshift for the cosmological model.
         This is used in calculations of the luminosity distance.
@@ -68,10 +70,11 @@ class CosmoModel:
 
         return lum_distance
 
-    def distmod(self, z: float) -> float:
+    def distmod(self, z: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         """
         Returns the distance modulus for a given redshift.
-        
+        Performs operation on either a single float or an entire numpy array.
+
         Inputs:
         z - redshift
         """
