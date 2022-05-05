@@ -59,7 +59,7 @@ class MCMC:
         """
         # params[0] = Omega_m, params[1] = Omega_L, params[2] = H0 [km/s/Mpc]
         cosmo = CosmoModel(params[0], params[1], params[2])
-        mu_vector = cosmo.distmod(self._zcmb) - self._mb  # difference of model_prediction - our_data
+        mu_vector = cosmo.distmod(self._zcmb) - self._mb + params[3]  # difference of model_prediction - our_data
         # IDE thinks einsum can only return an array, but this returns a float, so next line ignores the warning
         # noinspection PyTypeChecker
         chi2: float = np.einsum("i,ij,j", mu_vector.T, self._fisher, mu_vector)
@@ -69,6 +69,7 @@ class MCMC:
         Om = params[0]
         Ol = params[1]
         H0 = params[2]
+        M = params[3]
          
         log_p = 0.0
 
@@ -77,6 +78,8 @@ class MCMC:
         elif(Om<0 or Om>1):
             log_p += -np.inf
         elif(Ol<0 or Ol>1):
+            log_p += -np.inf
+        elif(M<-25 or M>-15):
             log_p += -np.inf
 
         return log_p
@@ -139,7 +142,8 @@ class MCMC:
         new_log_likelihood = self.log_likelihood(candidate_state)
         back_prob = self.move_probability(candidate_state, current_state)
         forward_prob = self.move_probability(current_state, candidate_state)
-
+        #back_prob = 0.0
+        #forward_prob = 0.0
         diff = new_log_likelihood + self.log_flat_priors(candidate_state) + back_prob - self._current_log_likelihood -self.log_flat_priors(current_state) - forward_prob
 
         return np.min([1., np.exp(diff)]), new_log_likelihood
@@ -194,8 +198,9 @@ def main():
     # The for loop is to allow for the option of plotting multiple chains on the same chart
     # (It just kinda looks cool)
     print(f"Starting Markov Chain")
-    start = [np.random.uniform(0, 1), np.random.uniform(0,1), np.random.uniform(50,100)]
-    g_cov_test = np.diag([.01, .01, .1])
+    start = [np.random.uniform(0, 1), np.random.uniform(0,1), np.random.uniform(50,100), np.random.uniform(-25, -15)]
+    #start = [.25, .74, 68]
+    g_cov_test = np.diag([.01, .01, .1, .01])
     markov_chain = MCMC(initial_state=start,
                         data_file=binned_data_file,
                         systematics_file=binned_sys_file, 
@@ -204,12 +209,11 @@ def main():
     markov_chain.make_chain(5000)
 
     print(markov_chain._chain)
-
-    figs, axs = plt.subplots(1, 3)
-        # plt.rcParams['figure.figsize'] = [20, 7]
-    for i in range(3):
-        axs[i].plot(markov_chain.chain[:, i])
-
+    fig, ax = plt.subplots(4,1)
+    ax[0].plot(markov_chain.chain[:,0])
+    ax[1].plot(markov_chain.chain[:,1])
+    ax[2].plot(markov_chain.chain[:,2])
+    ax[3].plot(markov_chain.chain[:,3])
     plt.show()
 
 if __name__ == "__main__":
