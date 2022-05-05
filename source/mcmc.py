@@ -12,7 +12,7 @@ class MCMC:
                  initial_state,
                  data_file: str,
                  systematics_file=None,
-                 g_cov=np.diag([0.01, 0.01, 1])) -> None: 
+                 g_cov=np.diag([0.01, 0.01, .1])) -> None: 
 
         self._chain = np.array(initial_state)
         self._initial_state = initial_state  # (Omega_m, Omega_L, H0)
@@ -65,6 +65,21 @@ class MCMC:
         chi2: float = np.einsum("i,ij,j", mu_vector.T, self._fisher, mu_vector)
         return -chi2 / 2.
 
+    def log_flat_priors(self, params):
+        Om = params[0]
+        Ol = params[1]
+        H0 = params[2]
+         
+        log_p = 0.0
+
+        if(H0<50 or H0>100):
+            log_p += -np.inf
+        elif(Om<0 or Om>1):
+            log_p += -np.inf
+        elif(Ol<0 or Ol>1):
+            log_p += -np.inf
+
+        return log_p
     # def generate_likelihood_arrays(self) -> Dict[Tuple[float, float, float], float]:
     #     """
     #     Iterates over possible values for the model parameters and creates a likelihood distribution
@@ -125,7 +140,7 @@ class MCMC:
         back_prob = self.move_probability(candidate_state, current_state)
         forward_prob = self.move_probability(current_state, candidate_state)
 
-        diff = new_log_likelihood + back_prob - self._current_log_likelihood - forward_prob
+        diff = new_log_likelihood + self.log_flat_priors(candidate_state) + back_prob - self._current_log_likelihood -self.log_flat_priors(current_state) - forward_prob
 
         return np.min([1., np.exp(diff)]), new_log_likelihood
 
@@ -179,10 +194,12 @@ def main():
     # The for loop is to allow for the option of plotting multiple chains on the same chart
     # (It just kinda looks cool)
     print(f"Starting Markov Chain")
-    start = np.array([0.5, 0.5, 50])
+    start = [np.random.uniform(0, 1), np.random.uniform(0,1), np.random.uniform(50,100)]
+    g_cov_test = np.diag([.01, .01, .1])
     markov_chain = MCMC(initial_state=start,
                         data_file=binned_data_file,
-                        systematics_file=binned_sys_file)
+                        systematics_file=binned_sys_file, 
+                        g_cov=g_cov_test)
 
     markov_chain.make_chain(5000)
 
