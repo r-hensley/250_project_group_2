@@ -43,8 +43,17 @@ class CosmoModel:
         """
 
         def integrand(redshift):
-            return 1. / np.sqrt(
-                self._Omega_m * (1 + redshift) ** 3 + self._Omega_k * (1 + redshift) ** 2 + self._Omega_L)
+            try:
+                to_sqrt = self._Omega_m * (1 + redshift) ** 3 + self._Omega_k * (1 + redshift) ** 2 + self._Omega_L
+                if to_sqrt < 0:
+                    raise RuntimeWarning
+                value = np.sqrt(self._Omega_m * (1 + redshift) ** 3 + self._Omega_k * (1 + redshift) ** 2 + self._Omega_L)
+            except RuntimeWarning as e:
+                # print(f"Negative value in square root: {self._Omega_m=}, {self._Omega_L=}, {self._Omega_k=}, {redshift=}")
+                value = np.sqrt(self._Omega_m * (1 + redshift) ** 3 + self._Omega_k * (1 + redshift) ** 2 + self._Omega_L)
+                # print(value)
+            value = 1. / value
+            return value
 
         return scipy.integrate.quad(integrand, 0, z)[0]
 
