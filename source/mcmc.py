@@ -71,16 +71,25 @@ class MCMC:
         H0 = params[2]
         M = params[3]
          
-        log_p = 0.0
+        log_p = 1.0
+
+        #if(H0<50 or H0>100):
+        #    log_p += -np.inf
+        #elif(Om<0 or Om>1):
+        #    log_p += -np.inf
+        #elif(Ol<0 or Ol>1):
+        #    log_p += -np.inf
+        #elif(M<-25 or M>-15):
+        #    log_p += -np.inf
 
         if(H0<50 or H0>100):
-            log_p += -np.inf
+            log_p *= 0
         elif(Om<0 or Om>1):
-            log_p += -np.inf
+            log_p *= 0
         elif(Ol<0 or Ol>1):
-            log_p += -np.inf
+            log_p *= 0
         elif(M<-25 or M>-15):
-            log_p += -np.inf
+            log_p *= 0
 
         return log_p
     # def generate_likelihood_arrays(self) -> Dict[Tuple[float, float, float], float]:
@@ -147,9 +156,11 @@ class MCMC:
         forward_prob = self.move_probability(current_state, candidate_state)
         #back_prob = 0.0
         #forward_prob = 0.0
-        diff = new_log_likelihood + self.log_flat_priors(candidate_state) + back_prob - self._current_log_likelihood -self.log_flat_priors(current_state) - forward_prob
+        #diff = new_log_likelihood + self.log_flat_priors(candidate_state) + back_prob - self._current_log_likelihood -self.log_flat_priors(current_state) - forward_prob
 
-        return np.min([1., np.exp(diff)]), new_log_likelihood
+        diff = new_log_likelihood  + back_prob - self._current_log_likelihood - forward_prob
+
+        return np.min([1., self.log_flat_priors(candidate_state)*np.exp(diff)]), new_log_likelihood
 
     def propagate_chain(self) -> None:
         """
@@ -173,8 +184,7 @@ class MCMC:
     def make_chain(self, n):
         for _ in range(n):
             self.propagate_chain()
-            print(f"Step #{self._current_step}")
-
+            
     @property
     def chain(self):
         return self._chain
@@ -189,35 +199,3 @@ class MCMC:
 #     differences = np.abs(array - value)  # Differences between elements of array and value
 #     idx = differences.argmin()  # Index of the element of the array with the smallest difference
 #     return array[idx]  # The element with the smallest difference
-
-
-def main():
-    basedir = os.path.dirname(os.path.abspath(''))
-    datadir = os.path.join(basedir, 'data')
-
-    binned_data_file = os.path.join(datadir, 'lcparam_DS17f.txt')
-    binned_sys_file = os.path.join(datadir, 'sys_DS17f.txt')
-
-    # The for loop is to allow for the option of plotting multiple chains on the same chart
-    # (It just kinda looks cool)
-    print(f"Starting Markov Chain")
-    start = [np.random.uniform(0, 1), np.random.uniform(0,1), np.random.uniform(50,100), np.random.uniform(-25, -15)]
-    #start = [.25, .74, 68]
-    g_cov_test = np.diag([.005, .005, .1, .01])
-    markov_chain = MCMC(initial_state=start,
-                        data_file=binned_data_file,
-                        systematics_file=binned_sys_file, 
-                        g_cov=g_cov_test)
-
-    markov_chain.make_chain(50000)
-
-    print(markov_chain._chain)
-    fig, ax = plt.subplots(4,1)
-    ax[0].plot(markov_chain.chain[:,0])
-    ax[1].plot(markov_chain.chain[:,1])
-    ax[2].plot(markov_chain.chain[:,2])
-    ax[3].plot(markov_chain.chain[:,3])
-    plt.show()
-
-if __name__ == "__main__":
-    main()
