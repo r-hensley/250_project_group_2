@@ -59,7 +59,7 @@ class MCMC:
         """
         # params[0] = Omega_m, params[1] = Omega_L, params[2] = H0 [km/s/Mpc]
         cosmo = CosmoModel(params[0], params[1], params[2])
-        mu_vector = cosmo.distmod(self._zcmb) - self._mb + params[3]  # difference of model_prediction - our_data
+        mu_vector =  self._mb - cosmo.distmod(self._zcmb) - params[3]  # difference of model_prediction - our_data
         # IDE thinks einsum can only return an array, but this returns a float, so next line ignores the warning
         # noinspection PyTypeChecker
         chi2: float = np.einsum("i,ij,j", mu_vector.T, self._fisher, mu_vector)
@@ -92,35 +92,6 @@ class MCMC:
             log_p *= 0
 
         return log_p
-    # def generate_likelihood_arrays(self) -> Dict[Tuple[float, float, float], float]:
-    #     """
-    #     Iterates over possible values for the model parameters and creates a likelihood distribution
-    #     using the log_likelihood() function
-    #     :return: A dictionary assigning values in parameter space to likelihood values
-    #     """
-    #     # self._parameter_space has arrays which contain possible values of the parameters
-    #
-    #     # Total number of points in parameter space
-    #     total_parameter_num = np.prod([len(i) for i in self._parameter_space])
-    #
-    #     # An unused list of parameter values and likelihoods
-    #     # params_to_likelihood: np.ndarray = np.array([((0, 0, 0), 0)]*1000)
-    #
-    #     # A dictionary of values in parameter space paired to likelihoods
-    #     likelihood_lookup: Dict[Tuple[float, float, float]: float] = {}
-    #
-    #     params: Tuple[float, float, float]
-    #     for idx, params in enumerate(itertools.product(*self._parameter_space)):
-    #         if idx % 1000 == 0:
-    #             print(f"Likelihood generation progress: {idx}/{total_parameter_num}")
-    #         # Equivalent to a nested for loop over the three lists
-    #         # i = an index that counts up from 0 over each loop
-    #         # params = a tuple (Omega_m, Omega_L, H0)
-    #         likelihood = self.log_likelihood(params)
-    #         # params_to_likelihood[i] = (params, likelihood)
-    #         likelihood_lookup[params] = likelihood
-    #
-    #     return likelihood_lookup
 
     def generator(self):
         """
@@ -159,8 +130,8 @@ class MCMC:
         #diff = new_log_likelihood + self.log_flat_priors(candidate_state) + back_prob - self._current_log_likelihood -self.log_flat_priors(current_state) - forward_prob
 
         diff = new_log_likelihood  + back_prob - self._current_log_likelihood - forward_prob
-
-        return np.min([1., self.log_flat_priors(candidate_state)*np.exp(diff)]), new_log_likelihood
+        
+        return self.log_flat_priors(candidate_state)*np.exp(np.min([0, diff])), new_log_likelihood
 
     def propagate_chain(self) -> None:
         """
@@ -188,14 +159,3 @@ class MCMC:
     @property
     def chain(self):
         return self._chain
-
-# def find_closest(array: np.ndarray, value: Union[int, float]) -> float:
-#     """
-#     A function to find the closest element in an array to a specified value
-#     :param array: Numpy array
-#     :param value: Input value
-#     :return: The element in the array that was closest to the specified value
-#     """
-#     differences = np.abs(array - value)  # Differences between elements of array and value
-#     idx = differences.argmin()  # Index of the element of the array with the smallest difference
-#     return array[idx]  # The element with the smallest difference
