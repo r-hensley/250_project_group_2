@@ -15,7 +15,7 @@ class MCMC:
                  g_cov=np.diag([0.01, 0.01, .1])) -> None: 
 
         self._chain = np.array(initial_state)
-        self._initial_state = initial_state  # (Omega_m, Omega_L, H0)
+        self._initial_state = initial_state  # (Omega_m, Omega_L, H0, M)
         self._current_state = initial_state
         self._current_step = 0
         self._generating_cov = g_cov
@@ -119,7 +119,10 @@ class MCMC:
         :param position_in: Starting position list with [Omega_m, Omega_L, H0]
         :return: Candidate next position
         """
-        return np.random.multivariate_normal(mean=self._current_state, cov=self._generating_cov)
+        new = np.random.multivariate_normal(mean=self._current_state, cov=self._generating_cov)
+        while(new[0]<0 or new[1]<0):
+            new = np.random.multivariate_normal(mean=self._current_state, cov=self._generating_cov)
+        return new
 
     # equivalent to g(x,x')
     def move_probability(self, current_state, new_state):
@@ -200,13 +203,13 @@ def main():
     print(f"Starting Markov Chain")
     start = [np.random.uniform(0, 1), np.random.uniform(0,1), np.random.uniform(50,100), np.random.uniform(-25, -15)]
     #start = [.25, .74, 68]
-    g_cov_test = np.diag([.01, .01, .1, .01])
+    g_cov_test = np.diag([.005, .005, .1, .01])
     markov_chain = MCMC(initial_state=start,
                         data_file=binned_data_file,
                         systematics_file=binned_sys_file, 
                         g_cov=g_cov_test)
 
-    markov_chain.make_chain(5000)
+    markov_chain.make_chain(50000)
 
     print(markov_chain._chain)
     fig, ax = plt.subplots(4,1)
