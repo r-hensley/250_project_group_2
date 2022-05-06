@@ -140,7 +140,7 @@ class MCMC:
 
         random_number = np.random.uniform(0, 1)
 
-        if random_number <= acceptance_prob:
+        if random_number <= acceptance_prob or np.isnan(acceptance_prob):
             self._chain = np.vstack([self._chain, candidate_state])
             self._current_state = candidate_state
             self._current_log_likelihood = new_log_likelihood
