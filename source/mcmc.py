@@ -25,6 +25,7 @@ class MCMC:
         self._generating_det = np.linalg.det(g_cov)
 
         self._data_file = data_file
+        self._counter = 0
 
         if systematics_file is not None:
             self._use_sys_cov = True
@@ -64,7 +65,7 @@ class MCMC:
         model = cosmo.LambdaCDM(H0=params[2]*u.km/u.s/u.Mpc, Om0 = params[0], Ode0=params[1])
 
         #cosmo = CosmoModel(params[0], params[1], params[2])
-        mu_vector =  self._mb - model.distmod(self._zcmb).value() - params[3]  # difference of model_prediction - our_data
+        mu_vector =  self._mb - model.distmod(self._zcmb).value - params[3]  # difference of model_prediction - our_data
 
         # IDE thinks einsum can only return an array, but this returns a float, so next line ignores the warning
         # noinspection PyTypeChecker
@@ -137,6 +138,9 @@ class MCMC:
 
         diff = new_log_likelihood  + back_prob - self._current_log_likelihood - forward_prob
         
+        if(self.log_flat_priors(candidate_state)==0):
+            self._counter += 1
+        
         return self.log_flat_priors(candidate_state)*np.exp(np.min([0, diff])), new_log_likelihood
 
     def propagate_chain(self) -> None:
@@ -161,6 +165,7 @@ class MCMC:
     def make_chain(self, n):
         for _ in range(n):
             self.propagate_chain()
+        print(self._counter)
             
     @property
     def chain(self):
