@@ -70,12 +70,12 @@ class CosmoModel:
         lum_distance = c / (self._H0 * to_hz) * (1 + z)  # prefactor in units of Mpc
         if self._Omega_k < 0:
             lum_distance *= (1. / np.sqrt(np.abs(self._Omega_k))) \
-                            * np.sinh(np.sqrt(np.abs(self._Omega_k)) * self.comoving(z))
+                            * np.sin(np.sqrt(np.abs(self._Omega_k)) * self.comoving(z))
         elif self._Omega_k == 0:
             lum_distance *= self.comoving(z)
         elif self._Omega_k > 0:
             lum_distance *= (1. / np.sqrt(np.abs(self._Omega_k))) \
-                            * np.sin(np.sqrt(np.abs(self._Omega_k)) * self.comoving(z))
+                            * np.sinh(np.sqrt(np.abs(self._Omega_k)) * self.comoving(z))
 
         return lum_distance
 
