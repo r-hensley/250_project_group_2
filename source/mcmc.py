@@ -64,8 +64,15 @@ class MCMC:
 
         model = cosmo.LambdaCDM(H0=params[2]*u.km/u.s/u.Mpc, Om0 = params[0], Ode0=params[1])
 
+<<<<<<< HEAD
         #cosmo = CosmoModel(params[0], params[1], params[2])
         mu_vector =  self._mb - model.distmod(self._zcmb).value - params[3]  # difference of model_prediction - our_data
+=======
+        # cosmo = CosmoModel(params[0], params[1], params[2])
+        distmod = model.distmod(self._zcmb).to_value()
+
+        mu_vector = self._mb - distmod - params[3]  # difference of model_prediction - our_data
+>>>>>>> eac311b97d50249e18f98698de4284fefae5df2c
 
         # IDE thinks einsum can only return an array, but this returns a float, so next line ignores the warning
         # noinspection PyTypeChecker
