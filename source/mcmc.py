@@ -1,5 +1,3 @@
-import os
-from turtle import forward
 import numpy as np
 from typing import Optional, List, Tuple
 import matplotlib.pyplot as plt
@@ -12,7 +10,7 @@ class MCMC:
                  initial_state,
                  data_file: str,
                  systematics_file=None,
-                 g_cov=np.diag([0.01, 0.01, .1])) -> None: 
+                 g_cov=np.diag([0.01, 0.01, .1])) -> None:
 
         self._chain = np.array(initial_state)
         self._initial_state = initial_state  # (Omega_m, Omega_L, H0, M)
@@ -42,7 +40,7 @@ class MCMC:
         # Fisher matrix is inverse of covariance matrix. Just inverting ahead of time.
 
     def construct_covariance(self) -> np.ndarray:
-        cov = np.diag(self._dmb)**2
+        cov = np.diag(self._dmb) ** 2
         if self._use_sys_cov:
             binned_sys = np.loadtxt(self._systematics_file)
             n = int(binned_sys[0])
@@ -59,7 +57,7 @@ class MCMC:
         """
         # params[0] = Omega_m, params[1] = Omega_L, params[2] = H0 [km/s/Mpc]
         cosmo = CosmoModel(params[0], params[1], params[2])
-        mu_vector =  self._mb - cosmo.distmod(self._zcmb) - params[3]  # difference of model_prediction - our_data
+        mu_vector = self._mb - cosmo.distmod(self._zcmb) - params[3]  # difference of model_prediction - our_data
 
         # IDE thinks einsum can only return an array, but this returns a float, so next line ignores the warning
         # noinspection PyTypeChecker
@@ -71,25 +69,25 @@ class MCMC:
         Ol = params[1]
         H0 = params[2]
         M = params[3]
-         
+
         log_p = 1.0
 
-        #if(H0<50 or H0>100):
+        # if(H0<50 or H0>100):
         #    log_p += -np.inf
-        #elif(Om<0 or Om>1):
+        # elif(Om<0 or Om>1):
         #    log_p += -np.inf
-        #elif(Ol<0 or Ol>1):
+        # elif(Ol<0 or Ol>1):
         #    log_p += -np.inf
-        #elif(M<-25 or M>-15):
+        # elif(M<-25 or M>-15):
         #    log_p += -np.inf
 
-        if(H0<50 or H0>100):
+        if H0 < 50 or H0 > 100:
             log_p *= 0
-        elif(Om<0 or Om>1):
+        elif Om < 0 or Om > 1:
             log_p *= 0
-        elif(Ol<0 or Ol>1):
+        elif Ol < 0 or Ol > 1:
             log_p *= 0
-        elif(M<-25 or M>-15):
+        elif M < -25 or M > -15:
             log_p *= 0
 
         return log_p
@@ -97,42 +95,40 @@ class MCMC:
     def generator(self):
         """
         Generates a new candidate position for the chain
-        :param position_in: Starting position list with [Omega_m, Omega_L, H0]
         :return: Candidate next position
         """
         new = np.random.multivariate_normal(mean=self._current_state, cov=self._generating_cov)
-        while(new[0]<0 or new[1]<0):
+        while new[0] < 0 or new[1] < 0:
             new = np.random.multivariate_normal(mean=self._current_state, cov=self._generating_cov)
         return new
 
     # equivalent to g(x,x')
     def move_probability(self, current_state, new_state):
         diff_vec = np.array(new_state) - np.array(current_state)
-        norm = 1/(np.sqrt((2*np.pi)**3)*np.sqrt(self._generating_det))
-        exponent = -0.5*np.einsum("i, ij, j", diff_vec.T, self._generating_fisher, diff_vec)
-        return norm*np.exp(exponent)
-
+        norm = 1 / (np.sqrt((2 * np.pi) ** 3) * np.sqrt(self._generating_det))
+        exponent = -0.5 * np.einsum("i, ij, j", diff_vec.T, self._generating_fisher, diff_vec)
+        return norm * np.exp(exponent)
 
     def generate_acceptance_prob(self,
                                  current_state,
-                                 candidate_state) -> float:
+                                 candidate_state):
         """
         Generates acceptance probability according to Metropolis-Hastings Algorithm.
         For right now, no priors are included.
-        :param last_pos: Starting position
-        :param candidate_pos: Potential new position
+        :param current_state: Starting position
+        :param candidate_state: Potential new position
         :return: A probability for accepting the new position
         """
         new_log_likelihood = self.log_likelihood(candidate_state)
         back_prob = self.move_probability(candidate_state, current_state)
         forward_prob = self.move_probability(current_state, candidate_state)
-        #back_prob = 0.0
-        #forward_prob = 0.0
-        #diff = new_log_likelihood + self.log_flat_priors(candidate_state) + back_prob - self._current_log_likelihood -self.log_flat_priors(current_state) - forward_prob
+        # back_prob = 0.0
+        # forward_prob = 0.0
+        # diff = new_log_likelihood + self.log_flat_priors(candidate_state) + back_prob - self._current_log_likelihood -self.log_flat_priors(current_state) - forward_prob
 
-        diff = new_log_likelihood  + back_prob - self._current_log_likelihood - forward_prob
-        
-        return self.log_flat_priors(candidate_state)*np.exp(np.min([0, diff])), new_log_likelihood
+        diff = new_log_likelihood + back_prob - self._current_log_likelihood - forward_prob
+
+        return self.log_flat_priors(candidate_state) * np.exp(np.min([0, diff])), new_log_likelihood
 
     def propagate_chain(self) -> None:
         """
@@ -156,7 +152,7 @@ class MCMC:
     def make_chain(self, n):
         for _ in range(n):
             self.propagate_chain()
-            
+
     @property
     def chain(self):
         return self._chain
