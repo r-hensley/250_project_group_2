@@ -33,18 +33,18 @@ class State:
 
             assert not [True for arg in args[0] if not is_float_or_int(arg)], "Arguments must be ints or floats"
 
-            self._Omega_m = args[0][0]
-            self._Omega_L = args[0][1]
-            self._H0 = args[0][2]
-            self._M = args[0][3]
+            self._Omega_m = float(args[0][0])
+            self._Omega_L = float(args[0][1])
+            self._H0 = float(args[0][2])
+            self._M = float(args[0][3])
         
         elif len(args) == 4:
             assert not [True for arg in args if not is_float_or_int(arg)], "Arguments must be ints or floats"
 
-            self._Omega_m = args[0]
-            self._Omega_L = args[1]
-            self._H0 = args[2]
-            self._M = args[3]
+            self._Omega_m = float(args[0])
+            self._Omega_L = float(args[1])
+            self._H0 = float(args[2])
+            self._M = float(args[3])
 
         else:
             raise TypeError(f"Please pass either one list/tuple/array argument or four separate arguments. "
@@ -69,4 +69,4 @@ class State:
         """
         :return: An array containing the parameters [Omega_m, Omega_L, H0, M]
         """
-        return np.ndarray([self._Omega_m, self._Omega_L, self._H0, self._M])
+        return np.array([self._Omega_m, self._Omega_L, self._H0, self._M])
