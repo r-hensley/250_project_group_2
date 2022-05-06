@@ -41,7 +41,7 @@ class MCMC:
         # Fisher matrix is inverse of covariance matrix. Just inverting ahead of time.
 
     def construct_covariance(self) -> np.ndarray:
-        cov = np.diag(self._dmb)
+        cov = np.diag(self._dmb**2)
         if self._use_sys_cov:
             binned_sys = np.loadtxt(self._systematics_file)
             n = int(binned_sys[0])
