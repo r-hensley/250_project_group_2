@@ -60,6 +60,7 @@ class MCMC:
         # params[0] = Omega_m, params[1] = Omega_L, params[2] = H0 [km/s/Mpc]
         cosmo = CosmoModel(params[0], params[1], params[2])
         mu_vector =  self._mb - cosmo.distmod(self._zcmb) - params[3]  # difference of model_prediction - our_data
+
         # IDE thinks einsum can only return an array, but this returns a float, so next line ignores the warning
         # noinspection PyTypeChecker
         chi2: float = np.einsum("i,ij,j", mu_vector.T, self._fisher, mu_vector)
