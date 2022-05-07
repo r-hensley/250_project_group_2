@@ -3,8 +3,6 @@ from turtle import forward
 import numpy as np
 from typing import Optional, List, Tuple
 import matplotlib.pyplot as plt
-import astropy.cosmology as cosmo
-import astropy.units as u
 
 from CosmoModel import CosmoModel
 
