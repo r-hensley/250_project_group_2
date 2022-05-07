@@ -154,11 +154,11 @@ class MCMC:
         random_number = np.random.uniform(0, 1)
 
         if random_number <= acceptance_prob or np.isnan(acceptance_prob):
-            self._chain = np.append(self.chain, candidate_state)
+            self._chain = np.vstack([self.chain, candidate_state])
             self._current_state = candidate_state
             self._current_log_likelihood = new_log_likelihood
         else:
-            self._chain = np.append(self.chain, candidate_state)
+            self._chain = np.vstack([self.chain, candidate_state])
 
         self._current_step += 1
 
@@ -176,6 +176,8 @@ class MCMC:
         Returns only the Omega_m values out of the current Markov chain
         :return: Numpy array with values of Omega_m
         """
+        print('self', self)
+        print('type self', type(self))
         return self.__getitem__(0)
 
     @property
@@ -209,4 +211,6 @@ class MCMC:
         :param item: Integer corresponding to parameter (0: Omega_m, 1: Omega_L, 2: H0, 3: M)
         :return: Numpy array containing data of just one parameter
         """
+        print('first ten of chain', self.chain[:10])
+
         return np.array([i[item] for i in self.chain])
