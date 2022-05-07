@@ -1,21 +1,25 @@
+from typing import Union
+
 import numpy as np
-from typing import Optional, List, Tuple
-import matplotlib.pyplot as plt
 
 from CosmoModel import CosmoModel
+from source.mcmc_state import State
 
 
 class MCMC:
     def __init__(self,
-                 initial_state,
+                 initial_state: State,
                  data_file: str,
                  systematics_file=None,
-                 g_cov=np.diag([0.01, 0.01, .1])) -> None:
+                 g_cov=np.diag([0.01, 0.01, .1, .1])) -> None:
 
-        self._chain = np.array(initial_state)
+        print(f"Printing initial state: {initial_state}")
+        self._chain = np.array([initial_state], dtype=State)
+        print(f"Chain after addition of initial state: {self.chain=} {type(self.chain)=}")
+        print(f"{len(self.chain)=} {self.chain.shape=}")
         self._initial_state = initial_state  # (Omega_m, Omega_L, H0, M)
         self._current_state = initial_state
-        self._current_step = 0
+        self._current_step = 0  # maybe we don't need this?
         self._generating_cov = g_cov
         self._generating_fisher = np.linalg.pinv(g_cov)
         self._generating_det = np.linalg.det(g_cov)
@@ -48,15 +52,19 @@ class MCMC:
         return cov
 
     # computes log_likelihood up to a constant (i.e. unnormalized)
-    def log_likelihood(self, params) -> float:
+    def log_likelihood(self, params: Union[np.ndarray, State]) -> float:
         """
-        Takes in a vector of the parameters Omega_m, Omega_L, and H0, then creates a cosmological model
+        Takes in a vector or State object of the parameters Omega_m, Omega_L, and H0, then creates a cosmological model
         off them and calculates the difference between
-        :param params: Tuple of current parameters (Omega_m, Omega_, H0)
+        :param params: Either a State object, or a tuple of current parameters (Omega_m, Omega_L, H0, M)
         :return: Numpy array of likelihood
         """
         # params[0] = Omega_m, params[1] = Omega_L, params[2] = H0 [km/s/Mpc]
-        cosmo = CosmoModel(params[0], params[1], params[2])
+        if type(params) == State:
+            params = params.array
+        assert type(params) == np.ndarray
+
+        cosmo = CosmoModel(params[0], params[1], params[2])  # instance of our model
         mu_vector = self._mb - cosmo.distmod(self._zcmb) - params[3]  # difference of model_prediction - our_data
 
         # IDE thinks einsum can only return an array, but this returns a float, so next line ignores the warning
@@ -64,22 +72,24 @@ class MCMC:
         chi2: float = np.einsum("i,ij,j", mu_vector.T, self._fisher, mu_vector)
         return -chi2 / 2.
 
-    def log_flat_priors(self, params):
+    @staticmethod  # signifies that this function doesn't need the "self" variable
+    def log_flat_priors(params: Union[np.ndarray, State]) -> float:
+        """
+        Depending on the four input parameters (Omega_m, Omega_L, H0, M), outputs a log probability which
+        is zero outside of set ranges
+        :param params: Either a State object or four arguments (Omega_m, Omega_L, H0, M)
+        :return: A single float probability either 0 or 1
+        """
+        if type(params) == State:
+            params = params.array
+        assert type(params) == np.ndarray
+
         Om = params[0]
         Ol = params[1]
         H0 = params[2]
         M = params[3]
 
         log_p = 1.0
-
-        # if(H0<50 or H0>100):
-        #    log_p += -np.inf
-        # elif(Om<0 or Om>1):
-        #    log_p += -np.inf
-        # elif(Ol<0 or Ol>1):
-        #    log_p += -np.inf
-        # elif(M<-25 or M>-15):
-        #    log_p += -np.inf
 
         if H0 < 50 or H0 > 100:
             log_p *= 0
@@ -92,26 +102,32 @@ class MCMC:
 
         return log_p
 
-    def generator(self):
+    def generator(self) -> State:
         """
         Generates a new candidate position for the chain
         :return: Candidate next position
         """
-        new = np.random.multivariate_normal(mean=self._current_state, cov=self._generating_cov)
+        new = np.random.multivariate_normal(mean=self._current_state.array,
+                                            cov=self._generating_cov)
+
         while new[0] < 0 or new[1] < 0:
-            new = np.random.multivariate_normal(mean=self._current_state, cov=self._generating_cov)
-        return new
+            new = np.random.multivariate_normal(mean=self._current_state.array,
+                                                cov=self._generating_cov)
+
+        return State(new)
 
     # equivalent to g(x,x')
-    def move_probability(self, current_state, new_state):
-        diff_vec = np.array(new_state) - np.array(current_state)
+    def move_probability(self,
+                         current_state: State,
+                         new_state: State) -> float:
+        diff_vec = new_state.array - current_state.array
         norm = 1 / (np.sqrt((2 * np.pi) ** 3) * np.sqrt(self._generating_det))
         exponent = -0.5 * np.einsum("i, ij, j", diff_vec.T, self._generating_fisher, diff_vec)
         return norm * np.exp(exponent)
 
     def generate_acceptance_prob(self,
-                                 current_state,
-                                 candidate_state):
+                                 current_state: State,
+                                 candidate_state: State):
         """
         Generates acceptance probability according to Metropolis-Hastings Algorithm.
         For right now, no priors are included.
@@ -122,9 +138,6 @@ class MCMC:
         new_log_likelihood = self.log_likelihood(candidate_state)
         back_prob = self.move_probability(candidate_state, current_state)
         forward_prob = self.move_probability(current_state, candidate_state)
-        # back_prob = 0.0
-        # forward_prob = 0.0
-        # diff = new_log_likelihood + self.log_flat_priors(candidate_state) + back_prob - self._current_log_likelihood -self.log_flat_priors(current_state) - forward_prob
 
         diff = new_log_likelihood + back_prob - self._current_log_likelihood - forward_prob
 
@@ -140,12 +153,12 @@ class MCMC:
 
         random_number = np.random.uniform(0, 1)
 
-        if random_number <= acceptance_prob:
-            self._chain = np.vstack([self._chain, candidate_state])
+        if random_number <= acceptance_prob or np.isnan(acceptance_prob):
+            self._chain = np.append(self.chain, candidate_state)
             self._current_state = candidate_state
             self._current_log_likelihood = new_log_likelihood
         else:
-            self._chain = np.vstack([self._chain, self._current_state])
+            self._chain = np.append(self.chain, candidate_state)
 
         self._current_step += 1
 
@@ -156,3 +169,44 @@ class MCMC:
     @property
     def chain(self):
         return self._chain
+
+    @property
+    def Omega_m(self) -> np.ndarray:
+        """
+        Returns only the Omega_m values out of the current Markov chain
+        :return: Numpy array with values of Omega_m
+        """
+        return self.__getitem__(0)
+
+    @property
+    def Omega_L(self) -> np.ndarray:
+        """
+        Returns only the Omega_L values out of the current Markov chain
+        :return: Numpy array with values of Omega_L
+        """
+        return self.__getitem__(1)
+
+    @property
+    def H0(self) -> np.ndarray:
+        """
+        Returns only the H0 values out of the current Markov chain
+        :return: Numpy array with values of H0
+        """
+        return self.__getitem__(2)
+
+    @property
+    def M(self) -> np.ndarray:
+        """
+        Returns only the M values out of the current Markov chain
+        :return: Numpy array with values of M
+        """
+        return self.__getitem__(3)
+
+    def __getitem__(self, item: int) -> np.ndarray:
+        """
+        Makes this class subscriptable, pulls out an array containing all the data from the chain
+        of just one of the parameters
+        :param item: Integer corresponding to parameter (0: Omega_m, 1: Omega_L, 2: H0, 3: M)
+        :return: Numpy array containing data of just one parameter
+        """
+        return np.array([i[item] for i in self.chain])
