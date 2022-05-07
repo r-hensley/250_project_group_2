@@ -29,11 +29,11 @@ class State(np.ndarray):
                                 f"(type {type(args[0])} passed)")
 
             assert not [True for arg in args[0] if not is_float_or_int(arg)], "Arguments must be ints or floats"
-            obj = np.asarray(args[0], dtype=float).view(cls)  # normal numpy array reclassed as State type
+            obj = np.asanyarray(args[0], dtype=float).view(cls)  # normal numpy array reclassed as State type
 
         elif len(args) == 4:
             assert not [True for arg in args if not is_float_or_int(arg)], "Arguments must be ints or floats"
-            obj = np.asarray(args, dtype=float).view(cls)  # normal numpy array reclasssed as State type
+            obj = np.asanyarray(args, dtype=float).view(cls)  # normal numpy array reclasssed as State type
 
         else:
             raise TypeError(f"Please pass either one list/tuple/array argument or four separate arguments. "
@@ -126,19 +126,19 @@ class State(np.ndarray):
         return self[3]
 
 
-s1 = State(1, 2, 3, 4)
-s2 = State(5, 6, 7, 8)
+# s1 = State(1, 2, 3, 4)
+# s2 = State(5, 6, 7, 8)
 
-print('s1 tuple', s1.tuple)
-print('s1[0]', s1[0])
-
-print('str s1', s1)
-print('repr s1', [s1])
-
-print('s1 values', s1.Omega_m, s1.Omega_L, s1.H0, s1.M)
-print('s2 values', s2.Omega_m, s2.Omega_L, s2.H0, s2.M)
-
-s3 = s1 + s2
-print('s3 0', s3[0])
-print('add two lists', s1 + s2)
-print('s1*4', s1 * 4)
+# print('s1 tuple', s1.tuple)
+# print('s1[0]', s1[0])
+#
+# print('str s1', s1)
+# print('repr s1', [s1])
+#
+# print('s1 values', s1.Omega_m, s1.Omega_L, s1.H0, s1.M)
+# print('s2 values', s2.Omega_m, s2.Omega_L, s2.H0, s2.M)
+#
+# s3 = s1 + s2
+# print('s3 0', s3[0])
+# print('add two lists', s1 + s2)
+# print('s1*4', s1 * 4)
