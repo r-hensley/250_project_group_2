@@ -63,7 +63,7 @@ class MCMC:
         return -chi2 / 2.
 
     @staticmethod  # signifies that this function doesn't need the "self" variable
-    def log_flat_priors(params: np.ndarray) -> float:
+    def flat_priors(params: np.ndarray) -> float:
         """
         Depending on the four input parameters (Omega_m, Omega_L, H0, M), outputs a log probability which
         is zero outside of set ranges
@@ -127,7 +127,7 @@ class MCMC:
 
         diff = new_log_likelihood + back_prob - self._current_log_likelihood - forward_prob
 
-        return self.log_flat_priors(candidate_state) * np.exp(np.min([0, diff])), new_log_likelihood
+        return self.flat_priors(candidate_state) * np.exp(np.min([0, diff])), new_log_likelihood
 
     def propagate_chain(self) -> None:
         """
