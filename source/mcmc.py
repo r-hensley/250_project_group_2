@@ -1,3 +1,4 @@
+from os import PRIO_PROCESS
 import numpy as np
 from CosmoModel import CosmoModel
 
@@ -7,7 +8,8 @@ class MCMC:
                  initial_state: np.ndarray,
                  data_file: str,
                  systematics_file=None,
-                 g_cov=np.diag([0.01, 0.01, .1, .1])) -> None:
+                 g_cov=np.diag([0.01, 0.01, .1, .1]),
+                 M_gaussian_prior=False) -> None:
 
         self._chain = np.array([initial_state], dtype=float)
         self._initial_state = initial_state  # (Omega_m, Omega_L, H0, M)
@@ -16,6 +18,8 @@ class MCMC:
         self._generating_cov = g_cov
         self._generating_fisher = np.linalg.pinv(g_cov)
         self._generating_det = np.linalg.det(g_cov)
+
+        self._M_gaussian_prior = M_gaussian_prior
 
         self._data_file = data_file
 
@@ -62,8 +66,7 @@ class MCMC:
         chi2: float = np.einsum("i,ij,j", mu_vector.T, self._fisher, mu_vector)
         return -chi2 / 2.
 
-    @staticmethod  # signifies that this function doesn't need the "self" variable
-    def flat_priors(params: np.ndarray) -> float:
+    def priors(self, params: np.ndarray) -> float:
         """
         Depending on the four input parameters (Omega_m, Omega_L, H0, M), outputs a log probability which
         is zero outside of set ranges
@@ -75,18 +78,23 @@ class MCMC:
         H0 = params[2]
         M = params[3]
 
-        log_p = 1.0
+        prior = 1.0
 
         if H0 < 50 or H0 > 100:
-            log_p *= 0
+            prior *= 0
         elif Om < 0 or Om > 1:
-            log_p *= 0
+            prior *= 0
         elif Ol < 0 or Ol > 1:
-            log_p *= 0
-        elif M < -25 or M > -15:
-            log_p *= 0
+            prior *= 0
 
-        return log_p
+        if(self._M_gaussian_prior):
+            gp = lambda Mag : 1./(np.sqrt(2*np.pi*0.042**2))*np.exp(-0.5*(Mag + 19.23)**2/(0.042**2))
+            prior *= gp(M)
+        else:
+            if M < -25 or M > -15:
+                prior *= 0
+
+        return prior
 
     def generator(self) -> np.ndarray:
         """
@@ -127,7 +135,7 @@ class MCMC:
 
         diff = new_log_likelihood + back_prob - self._current_log_likelihood - forward_prob
 
-        return self.flat_priors(candidate_state) * np.exp(np.min([0, diff])), new_log_likelihood
+        return self.priors(candidate_state) * np.exp(np.min([0, diff])), new_log_likelihood
 
     def propagate_chain(self) -> None:
         """
