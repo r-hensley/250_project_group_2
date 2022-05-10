@@ -41,11 +41,16 @@ class MCMC:
         # Fisher matrix is inverse of covariance matrix. Just inverting ahead of time.
 
     def construct_covariance(self) -> np.ndarray:
-        cov = np.diag(self._dmb) ** 2
+        """
+        Creates a 40x40 covariance matrix with the diagonal first coming from the dmb column of the lcparam_DS17f.txt
+        file, then adds to the entire matrix (not just the diagonal) the systematic contribution from the entire
+        sys_DS17f.txt file
+        """
+        cov = np.diag(self._dmb) ** 2  # 40 points on the diagonal
         if self._use_sys_cov:
             binned_sys = np.loadtxt(self._systematics_file)
-            n = int(binned_sys[0])
-            cov += binned_sys[1:].reshape((n, n))
+            n = int(binned_sys[0])  # first line of text file, n=40
+            cov += binned_sys[1:].reshape((n, n))  # last 1,600 lines, reshape into 40x40 matrix, add to cov matrix
         return cov
 
     # computes log_likelihood up to a constant (i.e. unnormalized)
@@ -56,10 +61,10 @@ class MCMC:
         :param params: A tuple of current parameters (Omega_m, Omega_L, H0, M)
         :return: Numpy array of likelihood
         """
-        # params[0] = Omega_m, params[1] = Omega_L, params[2] = H0 [km/s/Mpc]
+        # params[0] = Omega_m, params[1] = Omega_L, params[2] = H0 [km/s/Mpc], params[3] = M
 
         cosmo = CosmoModel(params[0], params[1], params[2])  # instance of our model
-        mu_vector = self._mb - cosmo.distmod(self._zcmb) - params[3]  # difference of model_prediction - our_data
+        mu_vector = (self._mb - params[3]) - cosmo.distmod(self._zcmb)   # difference of our_data - model_prediction
 
         # IDE thinks einsum can only return an array, but this returns a float, so next line ignores the warning
         # noinspection PyTypeChecker
@@ -104,7 +109,7 @@ class MCMC:
         new = np.random.multivariate_normal(mean=self._current_state,
                                             cov=self._generating_cov)
 
-        while new[0] < 0 or new[1] < 0:
+        while new[0] < 0 or new[1] < 0:  # don't allow it to generate Omega_m less than 0 or Omega_L greater than 1
             new = np.random.multivariate_normal(mean=self._current_state,
                                                 cov=self._generating_cov)
 
