@@ -1,6 +1,6 @@
 from os import PRIO_PROCESS
 import numpy as np
-from CosmoModel import CosmoModel
+from source.CosmoModel import CosmoModel
 
 
 class MCMC:

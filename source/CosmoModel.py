@@ -87,7 +87,13 @@ class CosmoModel:
         Inputs:
         z - redshift
         """
-        if type(z) == float:
+        if type(z) == int:
+            z = float(z)
+
+        if type(z) in [np.int_, np.float_]:
+            z = np.float64(z)
+
+        if type(z) in [float, np.float_]:
             return 5 * np.log10(self.dL(z) / 1e-5)
 
         elif type(z) == np.ndarray:
@@ -97,4 +103,5 @@ class CosmoModel:
             return results
 
         else:
-            raise TypeError("Argument of invalid type passed for z in distmod()")
+            raise TypeError(f"Argument of invalid type passed for z in distmod(). Requires type float or np.ndarray, "
+                            f"got type {type(z)}")
