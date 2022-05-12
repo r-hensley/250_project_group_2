@@ -13,15 +13,6 @@ if __name__ == "__main__":
     if suite:
         runner = unittest.TextTestRunner()
         runner.run(suite)
-    # except AttributeError as e:
-    #     print(e)
-    #     raise
-    #     # # necessary when running from jupyter notebook
-    #     # print(e)
-    #     # runner = unittest.TextTestRunner()
-    #     # runner.run(suite)
-    #     # # unittest.main(argv=['first-arg-is-ignored'], exit=False)
-
 
 class CosmoModel:
     """

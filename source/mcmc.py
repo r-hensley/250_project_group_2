@@ -1,5 +1,10 @@
-from os import PRIO_PROCESS
+from typing import Union
+
 import numpy as np
+
+import astropy.cosmology as astropy_cosmo
+import astropy.units as u
+
 from source.cosmo_model import CosmoModel
 
 
@@ -54,22 +59,41 @@ class MCMC:
         return cov
 
     # computes log_likelihood up to a constant (i.e. unnormalized)
-    def log_likelihood(self, params: np.ndarray) -> float:
+    def log_likelihood(self, params: np.ndarray, astropy=False, return_value="chi2") -> Union[float, tuple, np.ndarray]:
         """
         Takes in a vector of the parameters Omega_m, Omega_L, and H0, then creates a cosmological model
         off them and calculates the difference between
         :param params: A tuple of current parameters (Omega_m, Omega_L, H0, M)
+        :param astropy: Set to True to use astropy module for calculations
+        :param return_value: Set variable to be returned. Defaults to chi2, can be chi2, delta_mu, distmod,
+        or 'all' to return a tuple of (distmod, delta_mu, chi2)
         :return: Numpy array of likelihood
         """
         # params[0] = Omega_m, params[1] = Omega_L, params[2] = H0 [km/s/Mpc], params[3] = M
 
-        cosmo = CosmoModel(params[0], params[1], params[2])  # instance of our model
-        mu_vector = (self._mb - params[3]) - cosmo.distmod(self._zcmb)   # difference of our_data - model_prediction
+        if astropy:
+            astropy_model = astropy_cosmo.LambdaCDM(H0=params[2] * u.km / u.s / u.Mpc, Om0=params[0], Ode0=params[1])
+            distmod: np.ndarray = np.array(astropy_model.distmod(self._zcmb))
+            mu_vector: np.ndarray = (self._mb - params[3]) - distmod
+        else:
+            cosmo = CosmoModel(params[0], params[1], params[2])  # instance of our model
+            distmod: np.ndarray = cosmo.distmod(self._zcmb)
+            mu_vector: np.ndarray = (self._mb - params[3]) - distmod   # difference of our_data - model_prediction
 
         # IDE thinks einsum can only return an array, but this returns a float, so next line ignores the warning
         # noinspection PyTypeChecker
         chi2: float = np.einsum("i,ij,j", mu_vector.T, self._fisher, mu_vector)
-        return -chi2 / 2.
+        if return_value == 'chi2':
+            return -chi2 / 2.
+        elif return_value == 'delta_mu':
+            return mu_vector
+        elif return_value == 'distmod':
+            return distmod
+        elif return_value == 'all':
+            return distmod, mu_vector, -chi2 / 2
+        else:
+            raise ValueError("Invalid input for return_value parameter, must be chi2, delta_mu, or distmod")
+
 
     def priors(self, params: np.ndarray) -> float:
         """
