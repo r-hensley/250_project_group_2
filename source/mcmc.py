@@ -167,6 +167,9 @@ class MCMC:
 
     @property
     def chain(self):
+        """
+        :return: The chain object from the mcmc class
+        """
         return self._chain
 
     @property
