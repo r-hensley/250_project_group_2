@@ -8,7 +8,11 @@ import numpy as np
 import astropy.cosmology as cosmo
 import astropy.units as u
 
-from source.mcmc import MCMC
+basedir = os.path.dirname(os.path.abspath(''))
+sourcedir = os.path.join(basedir, 'source')
+sys.path.insert(0, sourcedir)
+
+from mcmc import MCMC
 
 basedir = os.path.dirname(os.path.abspath(''))
 sourcedir = os.path.join(basedir, 'source')
@@ -18,7 +22,7 @@ sysfile = os.path.join(basedir, 'data/sys_DS17f.txt')
 
 class CosmoModelVsAstropy(unittest.TestCase):
     def setUp(self):
-        from source.cosmo_model import CosmoModel
+        from cosmo_model import CosmoModel
         self.CosmoModel = CosmoModel
 
     def test_parameter_agreement(self) -> None:

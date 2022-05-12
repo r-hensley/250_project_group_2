@@ -6,17 +6,17 @@ import numpy as np
 
 import astropy.cosmology as cosmo
 import astropy.units as u
-
-from source.mcmc import MCMC
-
-
+basedir = os.path.dirname(os.path.abspath(''))
+sourcedir = os.path.join(basedir, 'source')
+import sys
+sys.path.insert(0, sourcedir)
+from mcmc import MCMC
 
 basedir = os.path.dirname(os.path.abspath(''))
 sourcedir = os.path.join(basedir, 'source')
 datadir = os.path.join(basedir, 'data')
 binned_data_file = os.path.join(datadir, 'lcparam_DS17f.txt')
 binned_sys_file = os.path.join(datadir, 'sys_DS17f.txt')
-
 
 class LikelihoodMap(unittest.TestCase):
     def test_1d_likelihoods(self):

@@ -1,11 +1,16 @@
 from typing import Union
-
+import os
 import numpy as np
 
 import astropy.cosmology as astropy_cosmo
 import astropy.units as u
 
-from source.cosmo_model import CosmoModel
+basedir = os.path.dirname(os.path.abspath(''))
+sourcedir = os.path.join(basedir, 'source')
+import sys
+sys.path.insert(0, sourcedir)
+
+from cosmo_model import CosmoModel
 
 
 class MCMC:
