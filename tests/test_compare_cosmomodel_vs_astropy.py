@@ -47,7 +47,7 @@ class CosmoModelVsAstropy(unittest.TestCase):
         Ode0_range = np.arange(0.25, 1, 0.25)
         M_range = np.arange(-25, -15, 5)
 
-        total_len = len(H0_range)*len(Om0_range)*len(Ode0_range)*len(M_range)*len(z)  # *len(z_range)*len(mb_range)*len(M_range)
+        total_len = len(H0_range)*len(Om0_range)*len(Ode0_range)*len(M_range)  # *len(z_range)*len(mb_range)*len(M_range)
 
         for H0, Om0, Ode0, M, in itertools.product(H0_range, Om0_range, Ode0_range, M_range):
             # astropy_model = cosmo.LambdaCDM(H0=H0 * u.km / u.s / u.Mpc, Om0=Om0, Ode0=Ode0)
@@ -76,14 +76,10 @@ class CosmoModelVsAstropy(unittest.TestCase):
             with self.subTest(params=params):
                 # print(f"Astropy: {ast_chi2} | Our model: {our_chi2} | P. diff: {percent_difference}")
                 self.assertLessEqual(percent_difference, 1e-4, f"{percent_difference} not <= 1e-5 ({params})")
+                successes += 1
             differences = np.append(differences, difference)
             # print(f"{z[:5]=}")
             # print(f"{H0=}, {Om0=}, {Ode0=}, {our_model_distmod=}, {astropy_distmod=}, {difference=}")
-
-        successes += 1
-        if successes % 100 == 0:
-            # print(f"{successes=}/{total_len}")
-            pass
 
         # print(f"Average difference: {np.average(differences)}")
         # print(f"Max difference: {np.max(differences)}")
@@ -94,6 +90,10 @@ class CosmoModelVsAstropy(unittest.TestCase):
         #         num_pass += 1
         # # print(f"Number passed: {num_pass}/{total_len}")
         # self.assertEqual(total_len, num_pass)
+
+        print(f"Tested the likelihood of of theoretical sets of parameters (Omega_m, Omega_L, H0, M) "
+              f"to the Astropy calculation, "
+              f"{successes}/{total_len} cases returned within a 1e-5 percent difference")
 
     def test_simple_parameter_agreement(self) -> None:
         """
@@ -128,6 +128,9 @@ class CosmoModelVsAstropy(unittest.TestCase):
                 num_pass += 1
         # print(f"Number passed: {num_pass}/{total_len}")
         self.assertEqual(num_pass, total_len)
+
+        print(f"Distance modulus calculations agree between our model and Astropy for "
+              f"{num_pass}/{total_len} of test cases")
 
 
 if __name__ == '__main__':

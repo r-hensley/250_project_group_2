@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+<<<<<<< HEAD
 import astropy.cosmology as cosmo
 import astropy.units as u
 basedir = os.path.dirname(os.path.abspath(''))
@@ -11,6 +12,11 @@ sourcedir = os.path.join(basedir, 'source')
 import sys
 sys.path.insert(0, sourcedir)
 from mcmc import MCMC
+=======
+from source.mcmc import MCMC
+
+
+>>>>>>> a85c59444925533ab56fd9552ac6f0a6d052eeca
 
 basedir = os.path.dirname(os.path.abspath(''))
 sourcedir = os.path.join(basedir, 'source')
@@ -19,8 +25,12 @@ binned_data_file = os.path.join(datadir, 'lcparam_DS17f.txt')
 binned_sys_file = os.path.join(datadir, 'sys_DS17f.txt')
 
 class LikelihoodMap(unittest.TestCase):
-    def test_1d_likelihoods(self):
-        debug = True
+    def test_1d_likelihoods(self) -> None:
+        """
+        A test to make 1D likelihood maps of parameters assuming the others are all the correct
+        theoretical values and seeing if they get peaks at the points of their correct values as well.
+        """
+        debug = False
         max_likelihoods = []
 
         def setup_chain():
@@ -94,8 +104,8 @@ class LikelihoodMap(unittest.TestCase):
 
                 return likelihood_x, likelihood_y, astropy_likelihood_y
 
-            fig, ax = plt.subplots(4, 1)
             if debug:
+                fig, ax = plt.subplots(4, 1)
                 print("Shown below is the parameters input to log_likelihood() as well as the likelihood they give out.")
             for var in range(4):
                 x, y, astro_y = map_likelihood(var)
@@ -127,7 +137,7 @@ class LikelihoodMap(unittest.TestCase):
                         self.assertTrue(0.5 <= max_likelihood < 0.9,
                                         f"Max value of Omega_L in 1D likelihood map test ({max_likelihood}) "
                                         f"not in range of 0.5 ~ 0.9.")
-                        print(f"Parameter Omega_m properly has max at {max_likelihood} within range of 0.5 ~ 0.9.")
+                        print(f"Parameter Omega_L properly has max at {max_likelihood} within range of 0.5 ~ 0.9.")
                 if var_num == 2:  # H0
                     with self.subTest(varying_parameter="H0"):
                         self.assertTrue(60 < max_likelihood < 80,
