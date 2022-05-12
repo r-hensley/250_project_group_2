@@ -8,8 +8,6 @@ import numpy as np
 import astropy.cosmology as cosmo
 import astropy.units as u
 
-from source.CosmoModel import CosmoModel
-
 basedir = os.path.dirname(os.path.abspath(''))
 sourcedir = os.path.join(basedir, 'source')
 sys.path.insert(0, sourcedir)
@@ -17,6 +15,10 @@ datafile = os.path.join(basedir, "data/lcparam_DS17f.txt")
 
 
 class CosmoModelVsAstropy(unittest.TestCase):
+    def setUp(self):
+        from source.cosmo_model import CosmoModel
+        self.CosmoModel = CosmoModel
+
     def test_parameter_agreement(self) -> None:
         """
         Loops over many values of H0, Omega_m, Omega_L, and M, and compares calculated values of delta_mu
@@ -40,7 +42,7 @@ class CosmoModelVsAstropy(unittest.TestCase):
             astropy_distmod = np.array(astropy_model.distmod(z))
             astropy_delta_mu = (mb - M) - astropy_distmod
 
-            our_model = CosmoModel(Om0, Ode0, H0)
+            our_model = self.CosmoModel(Om0, Ode0, H0)
             our_model_distmod = our_model.distmod(z)
             our_model_delta_mu = (mb - M) - our_model_distmod
 
@@ -78,7 +80,7 @@ class CosmoModelVsAstropy(unittest.TestCase):
         Ode0 = 0.77
         H0 = 68.5
 
-        my_model = CosmoModel(Om0, Ode0, H0)
+        my_model = self.CosmoModel(Om0, Ode0, H0)
         my_dmoduli = my_model.distmod(z)
 
         astropy_model = cosmo.LambdaCDM(H0=H0 * u.km / u.s / u.Mpc, Om0=Om0, Ode0=Ode0)
